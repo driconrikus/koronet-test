@@ -1,6 +1,8 @@
 
 from flask import Flask
 import os
+import psycopg2
+import redis
 
 app = Flask(__name__)
 
@@ -21,7 +23,6 @@ def hello_koronet():
 
     # PostgreSQL connection attempt
     try:
-        import psycopg2
         conn = psycopg2.connect(host=DB_HOST, database=DB_NAME, user=DB_USER, password=DB_PASSWORD)
         cur = conn.cursor()
         cur.execute("SELECT 1")
@@ -33,7 +34,6 @@ def hello_koronet():
 
     # Redis connection attempt
     try:
-        import redis
         r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
         r.ping()
         redis_status = "Connected"
