@@ -34,7 +34,7 @@ jobs:
         tags: ${{ secrets.DOCKER_USERNAME }}/koronet-web-server:latest
 
     - name: Run tests
-      run: echo "No tests configured yet. Add your test commands here."
+      run: python -m unittest discover
 
     - name: Push Docker image to Docker Hub
       if: github.ref == 'refs/heads/main'
@@ -50,6 +50,7 @@ jobs:
       with:
         context: ./terraform
         file: ./terraform/Dockerfile.prometheus
+        platforms: linux/amd64 # Explicitly specify platform
         push: true
         tags: ${{ secrets.DOCKER_USERNAME }}/koronet-prometheus:latest
 
@@ -71,17 +72,34 @@ jobs:
 
     - name: Download and install Amazon ECS CLI
       run: |
-        sudo curl -o /usr/local/bin/ecs-cli https://amazon-ecs-cli.s3.amazonaws.com/ecs-cli-linux-amd64-latest
-        sudo chmod +x /usr/local/bin/ecs-cli
+        # No longer needed as we're using AWS CLI directly
+        echo "Skipping Amazon ECS CLI installation."
     
     - name: Deploy to ECS
       run: |
-        # Placeholder for ECS deployment commands
-        echo "Deploying to ECS cluster: your-ecs-cluster-name"
-        echo "Service: your-ecs-service-name"
-        echo "Image: ${{ secrets.DOCKER_USERNAME }}/koronet-web-server:latest"
-        # Example commands (replace with actual ECS CLI or AWS CLI commands)
-        # ecs-cli compose --project-name koronet-web-server service up --create-log-groups --cluster-config your-ecs-cluster-name
-        # aws ecs update-service --cluster your-ecs-cluster-name --service your-ecs-service-name --force-new-deployment \
-        #   --task-definition $(aws ecs describe-task-definition --task-definition your-task-definition-family --query 'taskDefinition.taskDefinitionArn' --output text)
-        echo "ECS deployment commands go here."
+        echo "Deploying to ECS cluster: koronet-ecs-cluster"
+        
+        # Deploy Web Server Service
+        WEB_SERVER_TASK_DEFINITION_ARN=$(aws ecs describe-task-definition --task-definition koronet-web-server-task --query 'taskDefinition.taskDefinitionArn' --output text)
+        aws ecs update-service --cluster koronet-ecs-cluster --service koronet-web-server-service --task-definition $WEB_SERVER_TASK_DEFINITION_ARN --force-new-deployment
+        echo "Web Server Service deployed."
+
+        # Deploy PostgreSQL Service
+        POSTGRESQL_TASK_DEFINITION_ARN=$(aws ecs describe-task-definition --task-definition koronet-postgresql-task --query 'taskDefinition.taskDefinitionArn' --output text)
+        aws ecs update-service --cluster koronet-ecs-cluster --service koronet-postgresql-service --task-definition $POSTGRESQL_TASK_DEFINITION_ARN --force-new-deployment
+        echo "PostgreSQL Service deployed."
+
+        # Deploy Redis Service
+        REDIS_TASK_DEFINITION_ARN=$(aws ecs describe-task-definition --task-definition koronet-redis-task --query 'taskDefinition.taskDefinitionArn' --output text)
+        aws ecs update-service --cluster koronet-ecs-cluster --service koronet-redis-service --task-definition $REDIS_TASK_DEFINITION_ARN --force-new-deployment
+        echo "Redis Service deployed."
+
+        # Deploy Prometheus Service
+        PROMETHEUS_TASK_DEFINITION_ARN=$(aws ecs describe-task-definition --task-definition koronet-prometheus-task-new --query 'taskDefinition.taskDefinitionArn' --output text) # Note: Using prometheus-task-new
+        aws ecs update-service --cluster koronet-ecs-cluster --service koronet-prometheus-service --task-definition $PROMETHEUS_TASK_DEFINITION_ARN --force-new-deployment
+        echo "Prometheus Service deployed."
+
+        # Deploy Grafana Service
+        GRAFANA_TASK_DEFINITION_ARN=$(aws ecs describe-task-definition --task-definition koronet-grafana-task --query 'taskDefinition.taskDefinitionArn' --output text)
+        aws ecs update-service --cluster koronet-ecs-cluster --service koronet-grafana-service --task-definition $GRAFANA_TASK_DEFINITION_ARN --force-new-deployment
+        echo "Grafana Service deployed."
