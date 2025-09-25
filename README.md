@@ -1,6 +1,6 @@
-# Koronet Full-Stack Application
+# Koronet Backend Service and Infrastructure
 
-This repository contains a full-stack application demonstrating a web server with a relational database (PostgreSQL), an in-memory data store (Redis), and a comprehensive monitoring solution using Prometheus and Grafana, all deployed on AWS Elastic Container Service (ECS) using Terraform and managed with a GitHub Actions CI/CD pipeline.
+This repository contains a robust backend service with a relational database (PostgreSQL), an in-memory data store (Redis), and a comprehensive monitoring solution using Prometheus and Grafana, all deployed on AWS Elastic Container Service (ECS) using Terraform and managed with a GitHub Actions CI/CD pipeline. This project provides the core backend and operational infrastructure required for a full-stack application.
 
 ## Table of Contents
 
@@ -14,7 +14,7 @@ This repository contains a full-stack application demonstrating a web server wit
 
 ## Project Overview
 
-This project aims to provide a robust and scalable web service with database and caching capabilities, coupled with automated deployment and observability. The core components include:
+This project aims to provide a robust and scalable backend service with database and caching capabilities, coupled with automated deployment and observability. It lays the groundwork for a full-stack application. The core components include:
 
 *   **Flask Web Server**: A Python Flask application that responds with "Hi Koronet Team." and reports connectivity status to PostgreSQL and Redis.
 *   **PostgreSQL Database**: A relational database for persistent data storage.
