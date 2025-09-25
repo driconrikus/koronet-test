@@ -25,6 +25,14 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
 
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Install Python dependencies
+      run: pip install -r requirements.txt
+
     - name: Build Docker image
       id: docker_build
       uses: docker/build-push-action@v4
