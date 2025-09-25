@@ -68,13 +68,8 @@ jobs:
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-east-1 # Replace with your desired AWS region
+        aws-region: us-east-1
 
-    - name: Download and install Amazon ECS CLI
-      run: |
-        # No longer needed as we're using AWS CLI directly
-        echo "Skipping Amazon ECS CLI installation."
-    
     - name: Deploy to ECS
       run: |
         echo "Deploying to ECS cluster: koronet-ecs-cluster"
