@@ -165,6 +165,56 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+resource "aws_iam_policy" "ecs_execute_command_policy" {
+  name        = "koronet-ecs-execute-command-policy"
+  description = "IAM policy for ECS Execute Command permissions"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ssmmessages:CreateControlChannel",
+          "ssmmessages:CreateDataChannel",
+          "ssmmessages:OpenControlChannel",
+          "ssmmessages:OpenDataChannel",
+          "ecs:ExecuteCommand"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:DescribeLogGroups"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "arn:aws:logs:*:*:log-group:/ecs/koronet-*:log-stream:ecs/*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:GetEncryptionConfiguration"
+        ]
+        Resource = "arn:aws:s3:::ecs-exec-command-logs-*" # You might want to refine this to a specific bucket
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_execute_command_attachment" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = aws_iam_policy.ecs_execute_command_policy.arn
+}
+
 resource "aws_ecs_task_definition" "web_server" {
   family                   = "koronet-web-server-task"
   cpu                      = "512" # Increased CPU
@@ -527,6 +577,7 @@ resource "aws_ecs_task_definition" "prometheus_new" {
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_execution_role.arn # Added task_role_arn
 
   container_definitions = jsonencode([
     {
@@ -553,6 +604,7 @@ resource "aws_ecs_task_definition" "prometheus_new" {
           "awslogs-group"         = "/ecs/koronet-prometheus"
           "awslogs-region"        = "us-east-1"
           "awslogs-stream-prefix" = "ecs"
+          "awslogs-multiline-pattern" = "^\\S"
         }
       }
     }
@@ -596,6 +648,7 @@ resource "aws_ecs_service" "prometheus" {
   launch_type     = "FARGATE"
   enable_ecs_managed_tags = true
   propagate_tags          = "SERVICE"
+  enable_execute_command  = true
 
   network_configuration {
     subnets          = data.aws_subnets.public.ids
@@ -642,6 +695,7 @@ resource "aws_ecs_task_definition" "grafana" {
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_execution_role.arn # Added task_role_arn
 
   container_definitions = jsonencode([
     {
@@ -659,15 +713,15 @@ resource "aws_ecs_task_definition" "grafana" {
       environment = [
         { name = "GF_SECURITY_ADMIN_USER", value = "${var.grafana_admin_user}" },
         { name = "GF_SECURITY_ADMIN_PASSWORD", value = "${var.grafana_admin_password}" },
-        { name = "GF_SERVER_DOMAIN", value = "grafana.koronet.local" }, # Internal domain for Grafana
-        { name = "GF_SERVER_ROOT_URL", value = "http://grafana.koronet-grafana-service.koronet.local:3000" }, # For external access this would be the ALB DNS
+        { name = "GF_SERVER_DOMAIN", value = "grafana.koronet.local" },
+        { name = "GF_SERVER_ROOT_URL", value = "http://grafana.koronet-grafana-service.koronet.local:3000" },
         { name = "GF_PATHS_DATA", value = "/var/lib/grafana" }
       ]
       logConfiguration = {
         logDriver = "awslogs"
         options = {
           awslogs-group         = "/ecs/koronet-grafana"
-          awslogs-region        = "us-east-1" # Replace with your desired AWS region
+          awslogs-region        = "us-east-1"
           awslogs-stream-prefix = "ecs"
         }
       }
@@ -688,6 +742,7 @@ resource "aws_ecs_service" "grafana" {
   launch_type     = "FARGATE"
   enable_ecs_managed_tags = true
   propagate_tags          = "SERVICE"
+  enable_execute_command  = true
 
   network_configuration {
     subnets          = data.aws_subnets.public.ids
