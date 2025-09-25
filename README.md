@@ -137,3 +137,25 @@ Before you begin, ensure you have the following installed and configured:
 *   **GitHub Account**: For using GitHub Actions.
 *   **Docker Hub Account**: For storing Docker images (or another container registry). If using Google login, generate an [Access Token](https://hub.docker.com/settings/security/access-tokens) for `DOCKER_PASSWORD`.
 
+## Troubleshooting
+
+### Local Development: `address already in use` error
+
+If you encounter an error like `Error response from daemon: Ports are not available: exposing port TCP 0.0.0.0:5000 -> 127.0.0.1:0: listen tcp 0.0.0.0:5000: bind: address already in use` when running `docker-compose up`, it means another process on your local machine is already using the required port (`5000`).
+
+To resolve this (on macOS):
+
+1.  **Find the process using port 5000:**
+    Open your terminal and run:
+    ```bash
+    sudo lsof -i TCP:5000
+    ```
+2.  **Identify the culprit:** Note the `PID` (Process ID) from the output (e.g., `12345`) and the `COMMAND`.
+3.  **Stop the process:**
+    ```bash
+    kill -9 <PID>
+    ```
+    Replace `<PID>` with the actual process ID you found (e.g., `kill -9 12345`).
+
+After stopping the conflicting process, try running `docker-compose up --build` again.
+
