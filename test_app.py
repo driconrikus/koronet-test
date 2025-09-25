@@ -1,5 +1,6 @@
 import unittest
 import json
+from unittest.mock import patch, MagicMock
 from app import app # Assuming your Flask app is named 'app' in app.py
 
 class FlaskAppTests(unittest.TestCase):
@@ -8,25 +9,56 @@ class FlaskAppTests(unittest.TestCase):
         self.app = app.test_client()
         self.app.testing = True
 
-    def test_hello_koronet_status_code(self):
+    @patch('app.psycopg2.connect')
+    @patch('app.redis.Redis')
+    def test_hello_koronet_db_and_redis_connected(self, mock_redis, mock_psycopg2_connect):
+        # Configure mock PostgreSQL connection
+        mock_conn = MagicMock()
+        mock_psycopg2_connect.return_value = mock_conn
+        mock_cursor = MagicMock()
+        mock_conn.cursor.return_value = mock_cursor
+
+        # Configure mock Redis connection
+        mock_redis_instance = MagicMock()
+        mock_redis.return_value = mock_redis_instance
+        mock_redis_instance.ping.return_value = True
+
         response = self.app.get('/')
         self.assertEqual(response.status_code, 200)
+        self.assertIn(b"DB Status: Connected", response.data)
+        self.assertIn(b"Redis Status: Connected", response.data)
+        
+        mock_psycopg2_connect.assert_called_once() # Ensure connect was called
+        mock_redis.assert_called_once() # Ensure Redis was called
 
-    def test_hello_koronet_content(self):
-        response = self.app.get('/')
-        self.assertIn(b"Hi Koronet Team.", response.data)
+    @patch('app.psycopg2.connect', side_effect=Exception("Mock DB Error"))
+    @patch('app.redis.Redis')
+    def test_hello_koronet_db_error(self, mock_redis, mock_psycopg2_connect):
+        # Configure mock Redis connection (successful to isolate DB error)
+        mock_redis_instance = MagicMock()
+        mock_redis.return_value = mock_redis_instance
+        mock_redis_instance.ping.return_value = True
 
-    def test_hello_koronet_db_status_connected(self):
-        # This test assumes successful DB connection, which might not be true in a CI environment without a running DB
-        # For a more robust test, you'd mock the DB connection.
         response = self.app.get('/')
-        self.assertIn(b"DB Status: Connected", response.data) # Or check for Error if DB is not mocked
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"DB Status: Error: Mock DB Error", response.data)
+        self.assertIn(b"Redis Status: Connected", response.data)
+        mock_psycopg2_connect.assert_called_once()
 
-    def test_hello_koronet_redis_status_connected(self):
-        # This test assumes successful Redis connection, which might not be true in a CI environment without a running Redis
-        # For a more robust test, you'd mock the Redis connection.
+    @patch('app.psycopg2.connect')
+    @patch('app.redis.Redis', side_effect=Exception("Mock Redis Error"))
+    def test_hello_koronet_redis_error(self, mock_redis, mock_psycopg2_connect):
+        # Configure mock PostgreSQL connection (successful to isolate Redis error)
+        mock_conn = MagicMock()
+        mock_psycopg2_connect.return_value = mock_conn
+        mock_cursor = MagicMock()
+        mock_conn.cursor.return_value = mock_cursor
+
         response = self.app.get('/')
-        self.assertIn(b"Redis Status: Connected", response.data) # Or check for Error if Redis is not mocked
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"DB Status: Connected", response.data)
+        self.assertIn(b"Redis Status: Error: Mock Redis Error", response.data)
+        mock_redis.assert_called_once()
 
 if __name__ == '__main__':
     unittest.main()
