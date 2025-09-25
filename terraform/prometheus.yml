@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'web_server'
+    static_configs:
+      - targets: ['koronet-web-server-service.koronet.local:9100'] # Prometheus Node Exporter
+
+  - job_name: 'postgresql'
+    static_configs:
+      - targets: ['koronet-postgresql-service.koronet.local:9187'] # PostgreSQL Exporter
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['koronet-redis-service.koronet.local:9121'] # Redis Exporter
